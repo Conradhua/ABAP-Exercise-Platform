@@ -127,7 +127,8 @@ CLASS lcl_application IMPLEMENTATION.
       DATA submit_code TYPE c LENGTH 1.
       DATA text_question TYPE c LENGTH 100.
 
-      text_question = COND #( WHEN is_test_passed = abap_true THEN 'Test passed. Submit the code?'
+      text_question = COND #( WHEN is_test_passed = abap_true
+                              THEN 'Test passed. Submit the code?'
                               ELSE 'Test fail. Do you need to save the code?' ).
 
       CALL FUNCTION 'POPUP_TO_CONFIRM'
@@ -197,6 +198,10 @@ CLASS lcl_application IMPLEMENTATION.
   METHOD handle_user_command.
     CASE command.
       WHEN 'FC01'. " Run tests
+        IF current_mode = lif_const=>mode_editor.
+          execute_tests( ).
+        ENDIF.
+      WHEN 'FC02'. " Submit
         IF current_mode = lif_const=>mode_editor.
           execute_tests( ).
         ENDIF.
