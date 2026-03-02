@@ -15,9 +15,7 @@
     <SCRTEXT_S>Title</SCRTEXT_S>
     <SCRTEXT_M>Exercise Title</SCRTEXT_M>
     <SCRTEXT_L>Exercise Title</SCRTEXT_L>
-    <ACTFLAG>I</ACTFLAG>
     <DTELMASTER>E</DTELMASTER>
-    <RESERVEDTE>JB</RESERVEDTE>
     <REFKIND>D</REFKIND>
    </DD04V>
   </asx:values>

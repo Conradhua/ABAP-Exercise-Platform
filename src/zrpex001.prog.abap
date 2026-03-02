@@ -205,8 +205,8 @@ CLASS exercise_app IMPLEMENTATION.
 
   METHOD on_value_request_id.
     TYPES: BEGIN OF help_value_type,
-             exe_id TYPE zdtexercise_002-exe_id,
-             title  TYPE zdtexercise_002-title,
+             exe_id TYPE ztex_desc-ex_id,
+             title  TYPE ztex_desc-title,
            END OF help_value_type.
     DATA help_values   TYPE TABLE OF help_value_type.
     DATA return_values TYPE TABLE OF ddshretval.

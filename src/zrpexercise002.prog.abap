@@ -89,6 +89,7 @@ CLASS lcl_application IMPLEMENTATION.
     DATA editor_content TYPE string_table.
     DATA full_source    TYPE string_table.
     DATA html_dynamics  TYPE string_table.
+    DATA html_result_items TYPE string_table.
 
     format_editor_code( ).
 
@@ -105,20 +106,64 @@ CLASS lcl_application IMPLEMENTATION.
     DATA(prog_name) = generate_dynamic_subroutine( full_source ).
 
     IF prog_name IS NOT INITIAL.
+      " HTML Template
+
+
+      DATA(html_result_str) =
+        |<div class="test-item">| && cl_abap_char_utilities=>cr_lf &&
+        '<input type="checkbox" id="test-result-{{INDEX}}" class="test-toggle">' && cl_abap_char_utilities=>cr_lf &&
+        '<label for="test-result-{{INDEX}}" class="{{STATUS}} test-label">' && cl_abap_char_utilities=>cr_lf &&
+        '<span>' && cl_abap_char_utilities=>cr_lf &&
+        '{{result_snippet}}' && cl_abap_char_utilities=>cr_lf &&
+        '</span>' && cl_abap_char_utilities=>cr_lf &&
+        |<span class="arrow">▼</span>| && cl_abap_char_utilities=>cr_lf &&
+        |</label>| && cl_abap_char_utilities=>cr_lf &&
+        '<div class="code-snippet {{STATUS}}-snippet">' && cl_abap_char_utilities=>cr_lf &&
+        '{{code_snippet}}' && cl_abap_char_utilities=>cr_lf &&
+        '</div>' && cl_abap_char_utilities=>cr_lf &&
+        |</div>|.
+
+
+
       " Begin Execute result in HTML
       APPEND '<div class="result-section">' TO html_dynamics.
       APPEND '<h3>Test Results:</h3>' TO html_dynamics.
+
       PERFORM execute_tests IN PROGRAM (prog_name) IF FOUND.
       DATA(execute_results) = zcl_exercise_unit_test=>get_results( ).
       zcl_exercise_unit_test=>clear_results( ).
       is_test_passed = abap_true.
+
+      DATA html_item TYPE string.
+      DATA code_snippets TYPE string_table.
+      DATA index_str TYPE string.
       LOOP AT execute_results INTO DATA(execute_result).
-        IF execute_result CS 'Fail'.
-          APPEND |<div class="fail">X { execute_result }</div>| TO html_dynamics.
+
+        index_str = sy-tabix.
+        html_item = html_result_str.
+        IF execute_result-status = 'FAIL'.
           is_test_passed = abap_false.
-        ELSE.
-          APPEND |<div class="pass">O { execute_result }</div>| TO html_dynamics.
         ENDIF.
+
+        REPLACE ALL OCCURRENCES OF '{{INDEX}}' IN html_item WITH index_str.
+        REPLACE ALL OCCURRENCES OF '{{result_snippet}}' IN html_item WITH execute_result-msg.
+        REPLACE ALL OCCURRENCES OF '{{STATUS}}' IN html_item WITH to_lower( execute_result-status ).
+
+        " Start: Code snippet insert
+        SPLIT html_item AT cl_abap_char_utilities=>cr_lf INTO TABLE html_result_items.
+        DATA(replace_index) = line_index( html_result_items[ table_line = '{{code_snippet}}' ] ).
+        IF replace_index IS NOT INITIAL.
+          DELETE html_result_items INDEX replace_index.
+
+          SPLIT execute_result-code_snippet AT cl_abap_char_utilities=>cr_lf INTO TABLE code_snippets.
+          LOOP AT code_snippets ASSIGNING FIELD-SYMBOL(<code>).
+            <code> = |<div class = "code-line">{ <code> }</div>|.
+          ENDLOOP.
+          INSERT LINES OF code_snippets INTO html_result_items INDEX replace_index.
+        ENDIF.
+        " End:  Code snippet insert
+
+        APPEND LINES OF html_result_items TO html_dynamics.
       ENDLOOP.
       APPEND '</div>' TO html_dynamics.
       " End
@@ -344,6 +389,7 @@ CLASS lcl_application IMPLEMENTATION.
   METHOD render_html.
     DATA html_current_code TYPE w3htmltab.
     DATA url               TYPE c LENGTH 255.
+    DATA !size TYPE i VALUE 0.
 
     IF html_lines IS NOT INITIAL.
       html_current_code = html_lines.
@@ -389,6 +435,7 @@ CLASS lcl_application IMPLEMENTATION.
       FROM ztex_desc
              LEFT OUTER JOIN
                ztex_submission ON ztex_desc~ex_id = ztex_submission~ex_id
+                              AND ztex_submission~user_id = @sy-uname
       INTO CORRESPONDING FIELDS OF TABLE @mt_alv_outputs.
 
     " ALV Setting: 1. Field catalog
