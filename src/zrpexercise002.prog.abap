@@ -192,7 +192,7 @@ CLASS lcl_application IMPLEMENTATION.
         DATA(code_submission) = concat_lines_of( table = editor_content
                                                  sep = cl_abap_char_utilities=>cr_lf ).
         save_submission( status = COND #( WHEN is_test_passed = abap_true THEN lif_const=>status_pass
-                                          ELSE lif_const=>status_fail )
+                                          ELSE 'P' )
                          code = code_submission ).
 
       ENDIF.
@@ -249,6 +249,15 @@ CLASS lcl_application IMPLEMENTATION.
       WHEN 'FC02'. " Submit
         IF current_mode = lif_const=>mode_editor.
           execute_tests( ).
+        ENDIF.
+      WHEN 'FC03'. " Save
+        IF current_mode = lif_const=>mode_editor.
+          DATA(code_lines) = VALUE string_table( ).
+          abap_editor->get_text( IMPORTING table = code_lines ).
+          DATA(code_submission) = concat_lines_of( table = code_lines
+                                                   sep = cl_abap_char_utilities=>cr_lf ).
+          save_submission( status = lif_const=>status_part
+                           code   = code_submission ).
         ENDIF.
       WHEN 'E' OR 'EXIT' OR 'CANC'.
         IF current_mode = lif_const=>mode_editor.
@@ -368,6 +377,7 @@ CLASS lcl_application IMPLEMENTATION.
     "    Check if user has a previous submission
     SELECT SINGLE user_code FROM ztex_submission
       WHERE ex_id = @active_exercise-ex_id
+        AND user_id = @sy-uname
       INTO @DATA(saved_code).
 
     " 4. Fetch initial code
@@ -436,6 +446,7 @@ CLASS lcl_application IMPLEMENTATION.
              LEFT OUTER JOIN
                ztex_submission ON ztex_desc~ex_id = ztex_submission~ex_id
                               AND ztex_submission~user_id = @sy-uname
+      ORDER BY ztex_desc~ex_id
       INTO CORRESPONDING FIELDS OF TABLE @mt_alv_outputs.
 
     " ALV Setting: 1. Field catalog
@@ -527,14 +538,15 @@ CLASS lcl_application IMPLEMENTATION.
     IF current_mode = lif_const=>mode_list.
       " Hide 'Run Test' in list mode
       APPEND 'FC01' TO exclude_buttons.
+      APPEND 'FC03' TO exclude_buttons.
     ELSE.
       " Show 'Run test' in editor mode
       sscrfields-functxt_01 = |{ icon_execute_object } Run Tests|.
-
+      sscrfields-functxt_03 = |{ icon_system_save } Save Your Code|.
     ENDIF.
 
     IF me->is_test_passed = abap_true.
-      sscrfields-functxt_02 = |{ icon_system_save } Submit|.
+      sscrfields-functxt_02 = |{ icon_submit } Submit|.
     ELSE.
       " Hide 'Submit' button while test fail
       APPEND 'FC02' TO exclude_buttons.
@@ -588,6 +600,7 @@ DATA app_instance TYPE REF TO lcl_application.
 
 SELECTION-SCREEN FUNCTION KEY 1. " for run test button
 SELECTION-SCREEN FUNCTION KEY 2. " for submit button
+SELECTION-SCREEN FUNCTION KEY 3. " for save code button
 PARAMETERS p_dummy TYPE c.
 
 
